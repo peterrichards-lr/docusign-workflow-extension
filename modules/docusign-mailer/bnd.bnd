@@ -1,0 +1,5 @@
+Bundle-Name: Liferay Sales Engineering DocuSign Mailer
+Bundle-SymbolicName: com.liferay.workflow.docusign
+Bundle-Version: 1.0.0
+Export-Package: com.liferay.workflow.docusign
+-metatype-inherit: false

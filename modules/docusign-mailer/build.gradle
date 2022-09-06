@@ -1,0 +1,5 @@
+dependencies {
+    compileOnly group: "com.liferay.portal", name: "release.dxp.api"
+    compileOnly group: "org.slf4j", name: "slf4j-api"
+    compileOnly group: "com.liferay.sales.engineering", name: "com.liferay.workflow.extensions.common", version: "6.0.2"
+}
