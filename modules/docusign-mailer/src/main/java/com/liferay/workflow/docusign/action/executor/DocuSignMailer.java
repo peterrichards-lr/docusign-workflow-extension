@@ -22,6 +22,8 @@ import com.liferay.workflow.docusign.settings.DocuSignMailerSettingsHelper;
 import com.liferay.workflow.extensions.common.action.executor.BaseWorkflowActionExecutor;
 import com.liferay.workflow.extensions.common.context.WorkflowActionExecutionContext;
 import com.liferay.workflow.extensions.common.context.service.WorkflowActionExecutionContextService;
+import com.liferay.workflow.extensions.common.util.StringUtil;
+import com.liferay.workflow.extensions.common.util.WorkflowExtensionsUtil;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -93,60 +95,172 @@ public class DocuSignMailer extends BaseWorkflowActionExecutor<DocuSignMailerCon
     private boolean sendMail(Map<String, Serializable> workflowContext, DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
         final long companyId = GetterUtil.getLong(workflowContext.get(WorkflowConstants.CONTEXT_COMPANY_ID));
         final long groupId = GetterUtil.getLong((workflowContext.get(WorkflowConstants.CONTEXT_GROUP_ID)));
-        final long folderId = configuration.getFolderId();
 
-        _log.info("companyId: {}, groupId: {}, folderId: {}", companyId, groupId, folderId);
+        _log.trace("companyId: {}, groupId: {}", companyId, groupId);
 
-        final FileEntry fileEntry;
-        try {
-            fileEntry = dlAppLocalService.getFileEntryByFileName(groupId, folderId, "blank.pdf");
-        } catch (PortalException e) {
-            throw new ActionExecutorException("Unable to get file entry", e);
-        }
+        final FileEntry fileEntry = getDocument(groupId, workflowContext, configuration);
 
         if (fileEntry == null) {
             _log.warn("The file entry was null");
             return false;
         }
 
-        _log.info("fileEntry: {}", fileEntry);
-
-        /*
-        Based on the following code:
-
-        https://github.com/liferay/liferay-portal/blob/4c2eee0f7807199ec66fa947d6a22dcfc5b186cc/modules/apps/digital-signature/digital-signature-test/src/testIntegration/java/com/liferay/digital/signature/manager/test/DSEnvelopeManagerTest.java
-        https://github.com/liferay/liferay-portal/blob/4c2eee0f7807199ec66fa947d6a22dcfc5b186cc/modules/apps/digital-signature/digital-signature-web/src/main/java/com/liferay/digital/signature/web/internal/portlet/action/AddDSEnvelopeMVCResourceCommand.java
-         */
+        _log.trace("fileEntry: {}", fileEntry);
 
         final DSDocument document = buildDocument(fileEntry);
 
         final int recipientId = 1;
-        final String emailAddress = "peter.richards@liferay.com";
-        final String fullName = "Peter Richards";
+        final String emailAddress = getRecipientEmailAddress(workflowContext, configuration);
+        final String fullName = getRecipientFullName(workflowContext, configuration);
         final DSRecipient recipient = buildRecipient(recipientId, emailAddress, fullName);
 
-        final String envelopeName = "Workflow Extensions";
-        final String emailSubject = "DocuSign Example";
-        final String emailBlurb = "This is a test email";
+        final String envelopeName = getEnvelopeName(workflowContext, configuration);
+        final String emailSubject = getEmailSubject(workflowContext, configuration);
+        final String emailBlurb = getEmailBody(workflowContext, configuration);
 
-        final String senderEmailAddress = "liferaybotics@liferay.com";
+        final String senderEmailAddress = getSenderEmailAddress(workflowContext, configuration);
 
-        final DSEnvelope dsEnvelope = buildEnvelope(
-                envelopeName, emailSubject, emailBlurb,
-                Collections.singletonList(recipient),
-                Collections.singletonList(document),
-                senderEmailAddress
-                );
-
-        dsEnvelope.setStatus("sent");
-
-        final DSEnvelope response = dsEnvelopeManager.addDSEnvelope(
+        final DSEnvelope envelope = sendEnvelope(
                 companyId, groupId,
-                dsEnvelope);
+                buildEnvelope(
+                        envelopeName, emailSubject, emailBlurb,
+                        Collections.singletonList(recipient),
+                        Collections.singletonList(document),
+                        senderEmailAddress
+                ));
 
-        _log.info("dsEnvelopeId: {}", response.getDSEnvelopeId());
-        _log.info("status: {}", response.getStatus());
-        return true;
+        _log.debug("dsEnvelopeId: {}", envelope.getDSEnvelopeId());
+        _log.trace("status: {}", envelope.getStatus());
+
+        return !StringUtil.isBlank(envelope.getDSEnvelopeId());
+    }
+
+    private FileEntry getDocument(final long groupId, final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        try {
+            final long folderId = configuration.getFolderId();
+            final String lookupType = configuration.getDocumentLookupType();
+            final String documentIdentifier = getDocumentIdentifier(workflowContext, configuration);
+            switch (lookupType) {
+                case "file-entry-id":
+                    final long fileEntryId;
+                    try {
+                     fileEntryId =Long.parseLong(documentIdentifier);
+                    } catch (NumberFormatException e) {
+                        throw new ActionExecutorException("Unable to parse document identifier as a long - " + documentIdentifier);
+                    }
+                    return dlAppLocalService.getFileEntry(fileEntryId);
+                case "title":
+                    return dlAppLocalService.getFileEntry(groupId, folderId, documentIdentifier);
+                case "external-reference-code":
+                    return dlAppLocalService.getFileEntryByExternalReferenceCode(groupId, documentIdentifier);
+                case "uuid":
+                    return dlAppLocalService.getFileEntryByUuidAndGroupId(documentIdentifier, groupId);
+                case "filename":
+                    return dlAppLocalService.getFileEntryByFileName(groupId, folderId, documentIdentifier);
+                default:
+                    return null;
+            }
+        } catch (PortalException e) {
+            throw new ActionExecutorException("Unable to get file entry", e);
+        }
+    }
+
+    private String getDocumentIdentifier(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        if (configuration.isWorkflowKeyUsedForDocument()) {
+            final String documentWorkflowContextKey = configuration.getDocumentWorkflowContextKey();
+            if (StringUtil.isBlank(documentWorkflowContextKey)) {
+                throw new ActionExecutorException("The documentWorkflowContextKey was blank");
+            }
+            if (!workflowContext.containsKey(documentWorkflowContextKey)) {
+                throw new ActionExecutorException(documentWorkflowContextKey + " was not found in the workflowContext");
+            }
+            return String.valueOf(workflowContext.get(documentWorkflowContextKey));
+        }
+        final String document = configuration.getDocument();
+        if (StringUtil.isBlank(document)) {
+            throw new ActionExecutorException("The document was blank");
+        }
+        return document;
+    }
+
+    private String getRecipientEmailAddress(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        final String recipientWorkflowContextKey = configuration.getRecipientEmailAddressWorkflowContextKey();
+        if (StringUtil.isBlank(recipientWorkflowContextKey)) {
+            throw new ActionExecutorException("The recipientEmailAddressWorkflowContextKey was blank");
+        }
+        if (!workflowContext.containsKey(recipientWorkflowContextKey)) {
+            throw new ActionExecutorException(recipientWorkflowContextKey + " was not found in the workflowContext");
+        }
+        return String.valueOf(workflowContext.get(recipientWorkflowContextKey));
+    }
+
+    private String getRecipientFullName(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        final String recipientWorkflowContextKey = configuration.getRecipientFullNameWorkflowContextKey();
+        if (StringUtil.isBlank(recipientWorkflowContextKey)) {
+            throw new ActionExecutorException("The recipientFullNameWorkflowContextKey was blank");
+        }
+        if (!workflowContext.containsKey(recipientWorkflowContextKey)) {
+            throw new ActionExecutorException(recipientWorkflowContextKey + " was not found in the workflowContext");
+        }
+        return String.valueOf(workflowContext.get(recipientWorkflowContextKey));
+    }
+
+    private String getSenderEmailAddress(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        if (configuration.isWorkflowKeyUsedForSenderEmailAddress()) {
+            final String senderWorkflowContextKey = configuration.getSenderEmailAddressWorkflowContextKey();
+            if (StringUtil.isBlank(senderWorkflowContextKey)) {
+                throw new ActionExecutorException("The recipientWorkflowContextKey was blank");
+            }
+            if (!workflowContext.containsKey(senderWorkflowContextKey)) {
+                throw new ActionExecutorException(senderWorkflowContextKey + " was not found in the workflowContext");
+            }
+            return String.valueOf(workflowContext.get(senderWorkflowContextKey));
+        }
+        final String senderEmailAddress = configuration.getSenderEmailAddress();
+        if (StringUtil.isBlank(senderEmailAddress)) {
+            throw new ActionExecutorException("The senderEmailAddress was blank");
+        }
+        return senderEmailAddress;
+    }
+
+    private String getEnvelopeName(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) throws ActionExecutorException {
+        if (configuration.isWorkflowKeyUsedForEnvelopeName()) {
+            final String envelopeNameWorkflowContextKey = configuration.getEnvelopeNameWorkflowContextKey();
+            if (StringUtil.isBlank(envelopeNameWorkflowContextKey)) {
+                throw new ActionExecutorException("The envelopeNameWorkflowContextKey was blank");
+            }
+            if (!workflowContext.containsKey(envelopeNameWorkflowContextKey)) {
+                throw new ActionExecutorException(envelopeNameWorkflowContextKey + " was not found in the workflowContext");
+            }
+            return String.valueOf(workflowContext.get(envelopeNameWorkflowContextKey));
+        }
+        final String envelopeName = configuration.getEnvelopeName();
+        if (StringUtil.isBlank(envelopeName)) {
+            throw new ActionExecutorException("The envelopeName was blank");
+        }
+        return envelopeName;
+    }
+
+    private String getEmailSubject(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) {
+        final String template = configuration.getEmailSubjectTemplate();
+        return buildFromTemplate(template, workflowContext);
+    }
+
+    private String getEmailBody(final Map<String, Serializable> workflowContext, final DocuSignMailerConfigurationWrapper configuration) {
+        final String template = configuration.getEmailBodyTemplate();
+        return buildFromTemplate(template, workflowContext);
+    }
+
+    private String buildFromTemplate(final String template, final Map<String, Serializable> workflowContext) {
+        return StringUtil.isBlank(template) ? "" :
+                WorkflowExtensionsUtil.replaceTokens(template, workflowContext);
+    }
+
+    private DSEnvelope sendEnvelope(final long companyId, final long siteGroupId, final DSEnvelope envelope) {
+        envelope.setStatus("sent");
+        return dsEnvelopeManager.addDSEnvelope(
+                companyId, siteGroupId,
+                envelope);
     }
 
     private DSEnvelope buildEnvelope(final String envelopeName, final String subject, final String blurb, final List<DSRecipient> recipientList, final List<DSDocument> documentList, final String emailAddress) {
@@ -202,7 +316,6 @@ public class DocuSignMailer extends BaseWorkflowActionExecutor<DocuSignMailerCon
             }
         }
     }
-
 
     private void updateWorkflowStatus(final int status, final Map<String, Serializable> workflowContext) throws WorkflowException {
         try {
