@@ -5,8 +5,8 @@ public final class DocuSignMailerConstants {
     public static final String CONFIG_USE_WORKFLOW_CONTEXT_KEY_FOR_SENDER_EMAIL_ADDRESS_DEFAULT = "false";
     public static final String CONFIG_SENDER_EMAIL_ADDRESS_WORKFLOW_CONTEXT_KEY_DEFAULT = "";
     public static final String CONFIG_SENDER_EMAIL_ADDRESS_DEFAULT = "test@liferay.com";
-    public static final String CONFIG_RECIPIENT_EMAIL_ADDRESS_WORKFLOW_CONTEXT_KEY_DEFAULT = "true";
-    public static final String CONFIG_RECIPIENT_FULL_NAME_WORKFLOW_CONTEXT_KEY_DEFAULT = "emailAddress";
+    public static final String CONFIG_RECIPIENT_EMAIL_ADDRESS_WORKFLOW_CONTEXT_KEY_DEFAULT = "emailAddress";
+    public static final String CONFIG_RECIPIENT_FULL_NAME_WORKFLOW_CONTEXT_KEY_DEFAULT = "fullName";
     public static final String CONFIG_USE_WORKFLOW_CONTEXT_KEY_FOR_ENVELOPE_NAME_DEFAULT = "false";
     public static final String CONFIG_ENVELOPE_NAME_WORKFLOW_CONTEXT_KEY_DEFAULT = "";
     public static final String CONFIG_ENVELOPE_NAME_DEFAULT = "DocuSign Demo";
