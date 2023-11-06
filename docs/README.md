@@ -26,10 +26,7 @@ logger can be used for all of these extensions.
 
 ### Liferay Version
 
-These extensions have been tested with 7.4 U30.
-
-There is a known bug which was introduced in U21 which prevents the extensions being used for version U21 to U29
-inclusively.
+These extensions have been tested with 7.4 U92.
 
 ### Workflow Extensions Common
 
@@ -38,6 +35,12 @@ functionality required by the majority the other modules.
 
 This module is required when compiling the code and at runtime. The [section](#create-a-new-workflow-extension) which
 covers how to create a new Workflow Extension details how this dependency should be resolved.
+
+## Example Workflow
+
+The following example is based on an on-boarding use case.
+
+[Use case example](example/README.md)
 
 ## Create a new Workflow Extension
 
@@ -54,10 +57,10 @@ install the Workflow Extensions Common module.
 Within the directory of the workflow-extensions-common module, run a **gw clean build install**
 
 After which you need to add the dependency to module build.gradle. For example, the following line from this module
-tells Gradle that is has a dependency on version 6.0.2.
+tells Gradle that is has a dependency on version 9.0.0.
 
 ```
-compileOnly group: "com.liferay.sales.engineering", name: "com.liferay.workflow.extensions.common", version: "6.0.2"
+compileOnly group: "com.liferay.sales.engineering", name: "com.liferay.workflow.extensions.common", version: "9.0.0"
 ```
 
 ### Module Structure

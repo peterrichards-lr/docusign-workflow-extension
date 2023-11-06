@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+
+<workflow-definition
+        xmlns="urn:liferay.com:liferay-workflow_7.4.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:liferay.com:liferay-workflow_7.4.0 http://www.liferay.com/dtd/liferay-workflow-definition_7_4_0.xsd"
+>
+    <name>d90a13c6-09de-5a57-0cd0-86d5f619886e</name>
+    <version>13</version>
+    <state>
+        <name>Start</name>
+        <description>Begin a workflow.</description>
+        <metadata>
+            <![CDATA[
+				{
+					"xy": [
+						131,
+						-19
+					]
+				}
+			]]>
+        </metadata>
+        <initial>true</initial>
+        <labels>
+            <label language-id="en_US">
+                Start
+            </label>
+        </labels>
+        <transitions>
+            <transition>
+                <labels>
+                    <label language-id="en_US">
+                        Process Form
+                    </label>
+                </labels>
+                <name>a17ed3c3-99bc-4a22-9a66-2e533082ad1f</name>
+                <target>Populate Workflow Context</target>
+                <default>true</default>
+            </transition>
+        </transitions>
+    </state>
+    <state>
+        <name>End</name>
+        <description>Conclude the workflow.</description>
+        <metadata>
+            <![CDATA[
+				{
+					"xy": [
+						249,
+						505
+					],
+					"terminal": true
+				}
+			]]>
+        </metadata>
+        <labels>
+            <label language-id="en_US">
+                End
+            </label>
+        </labels>
+    </state>
+    <state>
+        <name>Populate Workflow Context</name>
+        <description>Execute actions in the workflow.</description>
+        <metadata>
+            <![CDATA[
+				{
+					"xy": [
+						187.0625,
+						151
+					]
+				}
+			]]>
+        </metadata>
+        <actions>
+            <action>
+                <name>Populate Workflow Context</name>
+                <description></description>
+                <script>
+                    <![CDATA[com.liferay.workflow.dynamic.data.mapping.form.extractor.action.executor.DDMFormInstanceRecordExtractor]]>
+                </script>
+                <script-language>java</script-language>
+                <priority>1</priority>
+                <execution-type>onEntry</execution-type>
+            </action>
+        </actions>
+        <labels>
+            <label language-id="en_US">
+                Populate Workflow Context
+            </label>
+        </labels>
+        <transitions>
+            <transition>
+                <labels>
+                    <label language-id="en_US">
+                        Trace
+                    </label>
+                </labels>
+                <name>18e01253-6112-48b1-9f10-3e490706e5fe</name>
+                <target>Inspect Workflow Context</target>
+                <default>true</default>
+            </transition>
+        </transitions>
+    </state>
+    <state>
+        <name>Inspect Workflow Context</name>
+        <description>Execute actions in the workflow.</description>
+        <metadata>
+            <![CDATA[
+				{
+					"xy": [
+						610.0625,
+						185
+					]
+				}
+			]]>
+        </metadata>
+        <actions>
+            <action>
+                <name>Inspect Workflow Context</name>
+                <description></description>
+                <script>
+                    <![CDATA[com.liferay.workflow.context.inspector.action.executor.WorkflowContextInspector]]>
+                </script>
+                <script-language>java</script-language>
+                <priority>1</priority>
+                <execution-type>onEntry</execution-type>
+            </action>
+        </actions>
+        <labels>
+            <label language-id="en_US">
+                Inspect Workflow Context
+            </label>
+        </labels>
+        <transitions>
+            <transition>
+                <labels>
+                    <label language-id="en_US">
+                        Send Contract
+                    </label>
+                </labels>
+                <name>93e9a5f5-3efc-401b-9f12-350f79c588da</name>
+                <target>Request Signature</target>
+                <default>true</default>
+            </transition>
+        </transitions>
+    </state>
+    <state>
+        <name>Request Signature</name>
+        <description>Execute actions in the workflow.</description>
+        <metadata>
+            <![CDATA[
+				{
+					"xy": [
+						543.0835666414955,
+						376.042013056333
+					]
+				}
+			]]>
+        </metadata>
+        <actions>
+            <action>
+                <name>Request Signature</name>
+                <description></description>
+                <script>
+                    <![CDATA[com.liferay.workflow.docusign.action.executor.DocuSignMailer]]>
+                </script>
+                <script-language>java</script-language>
+                <priority>1</priority>
+                <execution-type>onEntry</execution-type>
+            </action>
+        </actions>
+        <labels>
+            <label language-id="en_US">
+                Request Signature
+            </label>
+        </labels>
+        <transitions>
+            <transition>
+                <labels>
+                    <label language-id="en_US">
+                        Complete
+                    </label>
+                </labels>
+                <name>8ca12bee-b5f8-4d55-b122-22be38e9598a</name>
+                <target>End</target>
+                <default>true</default>
+            </transition>
+        </transitions>
+    </state>
+</workflow-definition>
